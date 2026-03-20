@@ -1,0 +1,15 @@
+[phases.install]
+cmds = ["pip install -r requirements.txt"]
+
+[start]
+cmd = "uvicorn main:app --host 0.0.0.0 --port $PORT"
+```
+
+5. Bấm **Commit changes**
+
+Đồng thời **đổi lại `Procfile`** về nội dung gốc:
+
+1. Click vào file `Procfile` → bút chì Edit
+2. Xóa hết → paste:
+```
+web: uvicorn main:app --host 0.0.0.0 --port $PORT

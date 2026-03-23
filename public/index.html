@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AnyTag Knowledge Agent</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #F5F6FA; height: 100vh; display: flex; flex-direction: column; color: #1a1a1a; }
+  .topbar { background: #fff; border-bottom: 1px solid #e8e8e8; padding: 12px 20px; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
+  .top-left { display: flex; align-items: center; gap: 10px; }
+  .logo { width: 36px; height: 36px; border-radius: 10px; background: #534AB7; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 600; }
+  .agent-name { font-size: 15px; font-weight: 600; }
+  .agent-sub { font-size: 11px; color: #888; margin-top: 1px; }
+  .status { display: flex; align-items: center; gap: 5px; font-size: 12px; color: #1A7A4A; }
+  .status-dot { width: 7px; height: 7px; border-radius: 50%; background: #1D9E75; }
+  .key-banner { background: #EEEDFE; border-bottom: 1px solid #AFA9EC; padding: 10px 20px; display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+  .key-banner label { font-size: 13px; color: #3C3489; font-weight: 500; white-space: nowrap; }
+  .key-banner input { flex: 1; padding: 6px 10px; border: 1px solid #AFA9EC; border-radius: 6px; font-size: 13px; background: #fff; color: #1a1a1a; outline: none; }
+  .key-banner input:focus { border-color: #534AB7; }
+  .key-save { padding: 6px 14px; background: #534AB7; color: #fff; border: none; border-radius: 6px; font-size: 13px; cursor: pointer; white-space: nowrap; }
+  .key-save:hover { background: #3C3489; }
+  .key-ok { font-size: 12px; color: #1A7A4A; display: none; }
+  .chat { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 16px; }
+  .msg { display: flex; gap: 10px; align-items: flex-start; }
+  .msg.user { flex-direction: row-reverse; }
+  .avatar { width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; flex-shrink: 0; }
+  .avatar.bot { background: #EEEDFE; color: #3C3489; }
+  .avatar.user { background: #E1F5EE; color: #085041; }
+  .bubble { max-width: 75%; padding: 10px 14px; border-radius: 14px; font-size: 14px; line-height: 1.65; }
+  .bubble.bot { background: #fff; border: 1px solid #e8e8e8; border-top-left-radius: 4px; }
+  .bubble.user { background: #EEEDFE; border: 1px solid #AFA9EC; border-top-right-radius: 4px; color: #26215C; }
+  .sources { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
+  .src { font-size: 11px; padding: 2px 8px; border-radius: 4px; background: #F5F6FA; border: 1px solid #e0e0e0; color: #666; }
+  .feedback { display: flex; gap: 6px; margin-top: 8px; }
+  .fb { font-size: 11px; padding: 3px 10px; border-radius: 20px; border: 1px solid #e0e0e0; background: transparent; cursor: pointer; color: #888; }
+  .fb:hover { background: #F5F6FA; }
+  .fb.up { background: #E1F5EE; border-color: #5DCAA5; color: #085041; }
+  .fb.dn { background: #FAECE7; border-color: #F0997B; color: #712B13; }
+  .typing-bub { background: #fff; border: 1px solid #e8e8e8; border-radius: 14px; border-top-left-radius: 4px; padding: 12px 16px; display: flex; gap: 4px; align-items: center; }
+  .dot { width: 6px; height: 6px; border-radius: 50%; background: #bbb; animation: blink 1.2s infinite; }
+  .dot:nth-child(2) { animation-delay: .2s; }
+  .dot:nth-child(3) { animation-delay: .4s; }
+  @keyframes blink { 0%,80%,100%{opacity:.2} 40%{opacity:1} }
+  .sugs-wrap { padding: 0 20px 10px; background: #F5F6FA; flex-shrink: 0; }
+  .sugs { display: flex; flex-wrap: wrap; gap: 7px; }
+  .sug { font-size: 12px; padding: 6px 12px; border-radius: 20px; border: 1px solid #d0d0d0; background: #fff; cursor: pointer; color: #555; }
+  .sug:hover { background: #EEEDFE; border-color: #AFA9EC; color: #3C3489; }
+  .inputbar { padding: 12px 20px 16px; background: #fff; border-top: 1px solid #e8e8e8; display: flex; gap: 10px; align-items: flex-end; flex-shrink: 0; }
+  textarea { flex: 1; border: 1px solid #d8d8d8; border-radius: 10px; padding: 9px 13px; font-size: 14px; line-height: 1.5; resize: none; min-height: 40px; max-height: 120px; font-family: inherit; outline: none; background: #F5F6FA; color: #1a1a1a; }
+  textarea:focus { border-color: #534AB7; background: #fff; }
+  textarea::placeholder { color: #aaa; }
+  .send-btn { width: 38px; height: 38px; border-radius: 10px; background: #534AB7; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .send-btn:hover { background: #3C3489; }
+  .send-btn:disabled { background: #ccc; cursor: default; }
+  .send-btn svg { width: 16px; height: 16px; }
+  .footer { text-align: center; font-size: 11px; color: #aaa; padding: 6px; background: #F5F6FA; flex-shrink: 0; }
+  .chat::-webkit-scrollbar { width: 4px; }
+  .chat::-webkit-scrollbar-thumb { background: #ddd; border-radius: 2px; }
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div class="top-left">
+    <div class="logo">AT</div>
+    <div>
+      <div class="agent-name">AnyTag Knowledge Agent</div>
+      <div class="agent-sub">Internal CS assistant · AnyMind Group</div>
+    </div>
+  </div>
+  <div class="status"><div class="status-dot"></div>Online</div>
+</div>
+<div class="key-banner">
+  <label>Anthropic API Key:</label>
+  <input type="password" id="api-key-input" placeholder="sk-ant-api03-..." />
+  <button class="key-save" onclick="saveKey()">Save</button>
+  <span class="key-ok" id="key-ok">Key saved!</span>
+</div>
+<div class="chat" id="chat">
+  <div class="msg">
+    <div class="avatar bot">AT</div>
+    <div><div class="bubble bot">Hi! I'm the AnyTag Knowledge Agent.<br><br>Ask me anything about AnyTag — campaign setup, influencer discovery, analytics, reporting, or any workflow question.<br><br><strong>To get started:</strong> enter your Anthropic API key in the bar above, then ask away!</div></div>
+  </div>
+</div>
+<div class="sugs-wrap" id="sugs-wrap">
+  <div class="sugs">
+    <span class="sug" onclick="useSug(this)">How do I create a campaign?</span>
+    <span class="sug" onclick="useSug(this)">How does influencer discovery work?</span>
+    <span class="sug" onclick="useSug(this)">What analytics does AnyTag provide?</span>
+    <span class="sug" onclick="useSug(this)">How do I track campaign posts?</span>
+  </div>
+</div>
+<div class="inputbar">
+  <textarea id="inp" rows="1" placeholder="Ask about AnyTag features, campaigns, influencers…" oninput="resize(this)" onkeydown="onKey(event)"></textarea>
+  <button class="send-btn" id="send" onclick="send()">
+    <svg viewBox="0 0 16 16" fill="none"><path d="M2 8h12M9 3l5 5-5 5" stroke="white" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </button>
+</div>
+<div class="footer">AnyTag Knowledge Agent · AnyMind Group internal · Powered by Claude API</div>
+<script>
+const SYSTEM=`You are the AnyTag Knowledge Agent, an internal AI assistant for AnyMind Group's Customer Success team. AnyTag is AnyMind Group's influencer marketing platform for discovering, activating, managing, tracking and attributing influencer marketing campaigns across YouTube, Instagram, TikTok and Twitter/X. Answer questions about AnyTag features, campaign workflows, influencer management, analytics and CS processes. Reply in the same language as the question. For workflow questions use numbered steps. If unsure say: I don't have full information on this, please check with the Product team or ask in #cs-product-questions. Knowledge base: anymind-group.gitbook.io/english-1`;
+let history=[],busy=false,apiKey=localStorage.getItem('anytag_key')||'';
+window.onload=()=>{if(apiKey){document.getElementById('api-key-input').value=apiKey;document.getElementById('key-ok').style.display='inline';}};
+function saveKey(){const v=document.getElementById('api-key-input').value.trim();if(!v)return;apiKey=v;localStorage.setItem('anytag_key',v);const ok=document.getElementById('key-ok');ok.style.display='inline';setTimeout(()=>ok.style.display='none',2000);}
+function resize(el){el.style.height='auto';el.style.height=Math.min(el.scrollHeight,120)+'px';}
+function onKey(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send();}}
+function useSug(el){document.getElementById('inp').value=el.textContent;document.getElementById('sugs-wrap').style.display='none';send();}
+function esc(t){return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function fmt(t){return esc(t).replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>').replace(/\n\n/g,'<br><br>').replace(/\n/g,'<br>');}
+function src(t){const s=[],l=t.toLowerCase();if(l.includes('campaign'))s.push('Campaign Guide');if(l.includes('influencer'))s.push('Influencer Management');if(l.includes('analytic')||l.includes('report'))s.push('Analytics Guide');if(l.includes('track'))s.push('Tracking Guide');if(!s.length)s.push('AnyTag Help · Gitbook');return s;}
+function addMsg(role,html,sources){
+  const chat=document.getElementById('chat'),w=document.createElement('div');
+  w.className='msg'+(role==='user'?' user':'');
+  const av=role==='user'?'CS':'AT',ac=role==='user'?'user':'bot',bc=role==='user'?'user':'bot';
+  let inner=`<div class="avatar ${ac}">${av}</div><div><div class="bubble ${bc}">${html}</div>`;
+  if(sources?.length)inner+=`<div class="sources">`+sources.map(s=>`<span class="src">${s}</span>`).join('')+`</div>`;
+  if(role==='bot'){const id='fb'+Date.now();inner+=`<div class="feedback"><button class="fb" onclic

@@ -72,10 +72,12 @@ export default async function handler(req) {
     return new Response('Method not allowed', { status: 405 });
   }
 
-  const { message, history, apiKey } = await req.json();
+  const { message, history } = await req.json();
 
-  if (!apiKey || !apiKey.startsWith('sk-ant')) {
-    return new Response(JSON.stringify({ error: 'Invalid API key' }), { status: 401 });
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+
+  if (!apiKey) {
+    return new Response(JSON.stringify({ error: 'API key not configured on server' }), { status: 500 });
   }
 
   const docs = await Promise.all(GITBOOK_URLS.slice(0, 8).map(fetchPage));
@@ -126,3 +128,8 @@ ${knowledge}`;
     headers: { 'Content-Type': 'application/json' }
   });
 }
+```
+
+Commit xong → vào **Vercel dashboard** → **Settings** → **Environment Variables** → thêm:
+```
+ANTHROPIC_API_KEY = sk-ant-api03-...

@@ -37,9 +37,9 @@ async function fetchPage(url) {
       .trim();
     const titleMatch = html.match(/<h1[^>]*>([^<]+)<\/h1>/i);
     const title = titleMatch ? titleMatch[1].trim() : url;
-    return `## ${title}\n[${url}]\n${text.slice(0, 1500)}`;
+    return '## ' + title + '\n[' + url + ']\n' + text.slice(0, 1500);
   } catch (e) {
-    return `[Could not fetch: ${url}]`;
+    return '[Could not fetch: ' + url + ']';
   }
 }
 
@@ -59,12 +59,12 @@ function generateSuggestions(reply, question) {
     "What is the Chrome Extension for?",
   ];
   const q = question.toLowerCase().split(' ')[0];
-  return all.filter(s => !s.toLowerCase().includes(q)).slice(0, 3);
+  return all.filter(function(s) { return !s.toLowerCase().includes(q); }).slice(0, 3);
 }
 
 function extractSources(text) {
   const matches = text.match(/\(Source:[^)]+\)/g) || [];
-  return matches.map(m => m.replace('(Source:', '').replace(')', '').trim());
+  return matches.map(function(m) { return m.replace('(Source:', '').replace(')', '').trim(); });
 }
 
 export default async function handler(req) {
@@ -72,7 +72,9 @@ export default async function handler(req) {
     return new Response('Method not allowed', { status: 405 });
   }
 
-  const { message, history } = await req.json();
+  const body = await req.json();
+  const message = body.message;
+  const history = body.history || [];
 
   const apiKey = process.env.ANTHROPIC_API_KEY;
 
@@ -80,22 +82,13 @@ export default async function handler(req) {
     return new Response(JSON.stringify({ error: 'API key not configured on server' }), { status: 500 });
   }
 
-  const docs = await Promise.all(GITBOOK_URLS.slice(0, 8).map(fetchPage));
+  const pagesToFetch = GITBOOK_URLS.slice(0, 8);
+  const docs = await Promise.all(pagesToFetch.map(fetchPage));
   const knowledge = docs.join('\n\n---\n\n');
 
-  const system = `You are the AnyTag Knowledge Agent — an internal AI assistant for AnyMind Group's Customer Success team.
+  const system = 'You are the AnyTag Knowledge Agent — an internal AI assistant for AnyMind Group\'s Customer Success team.\n\nAnyTag is AnyMind Group\'s influencer marketing platform for discovering, activating, managing, tracking and attributing influencer marketing campaigns.\n\nRULES:\n1. Answer based on the AnyTag documentation below.\n2. Always cite the source at the end: (Source: [page name])\n3. If not in docs, say: "I don\'t have this information yet. Please check with the Product team or #cs-product-questions."\n4. Reply in the same language as the question — Vietnamese or English.\n5. For workflow questions, use numbered steps. Be concise.\n\n--- LIVE ANYTAG DOCUMENTATION ---\n' + knowledge;
 
-AnyTag is AnyMind Group's influencer marketing platform for discovering, activating, managing, tracking and attributing influencer marketing campaigns.
-
-RULES:
-1. Answer based on the AnyTag documentation below.
-2. Always cite the source at the end: (Source: [page name])
-3. If not in docs, say: "I don't have this information yet. Please check with the Product team or #cs-product-questions."
-4. Reply in the same language as the question — Vietnamese or English.
-5. For workflow questions, use numbered steps. Be concise.
-
---- LIVE ANYTAG DOCUMENTATION ---
-${knowledge}`;
+  const messages = history.concat([{ role: 'user', content: message }]);
 
   const response = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
@@ -107,8 +100,8 @@ ${knowledge}`;
     body: JSON.stringify({
       model: 'claude-sonnet-4-5',
       max_tokens: 1024,
-      system,
-      messages: [...history, { role: 'user', content: message }]
+      system: system,
+      messages: messages
     })
   });
 
@@ -121,15 +114,10 @@ ${knowledge}`;
   const reply = data.content[0].text;
 
   return new Response(JSON.stringify({
-    reply,
+    reply: reply,
     suggestions: generateSuggestions(reply, message),
     sources: extractSources(reply)
   }), {
     headers: { 'Content-Type': 'application/json' }
   });
 }
-```
-
-Commit xong → vào **Vercel dashboard** → **Settings** → **Environment Variables** → thêm:
-```
-ANTHROPIC_API_KEY = sk-ant-api03-...

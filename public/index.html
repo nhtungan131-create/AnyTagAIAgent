@@ -73,7 +73,7 @@
 <div class="key-banner">
   <label>Anthropic API Key:</label>
   <input type="password" id="api-key-input" placeholder="sk-ant-api03-..." />
-  <button class="key-save" onclick="saveKey()">Save</button>
+  <button class="key-save" id="save-btn">Save</button>
   <span class="key-ok" id="key-ok">Key saved!</span>
 </div>
 <div class="chat" id="chat">
@@ -84,34 +84,126 @@
 </div>
 <div class="sugs-wrap" id="sugs-wrap">
   <div class="sugs">
-    <span class="sug" onclick="useSug(this)">How do I create a campaign?</span>
-    <span class="sug" onclick="useSug(this)">How does influencer discovery work?</span>
-    <span class="sug" onclick="useSug(this)">What analytics does AnyTag provide?</span>
-    <span class="sug" onclick="useSug(this)">How do I track campaign posts?</span>
+    <span class="sug" id="sug1">How do I create a campaign?</span>
+    <span class="sug" id="sug2">How does influencer discovery work?</span>
+    <span class="sug" id="sug3">What analytics does AnyTag provide?</span>
+    <span class="sug" id="sug4">How do I track campaign posts?</span>
   </div>
 </div>
 <div class="inputbar">
-  <textarea id="inp" rows="1" placeholder="Ask about AnyTag features, campaigns, influencers…" oninput="resize(this)" onkeydown="onKey(event)"></textarea>
-  <button class="send-btn" id="send" onclick="send()">
+  <textarea id="inp" rows="1" placeholder="Ask about AnyTag features, campaigns, influencers…"></textarea>
+  <button class="send-btn" id="send-btn">
     <svg viewBox="0 0 16 16" fill="none"><path d="M2 8h12M9 3l5 5-5 5" stroke="white" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
   </button>
 </div>
 <div class="footer">AnyTag Knowledge Agent · AnyMind Group internal · Powered by Claude API</div>
-<script>
-const SYSTEM=`You are the AnyTag Knowledge Agent, an internal AI assistant for AnyMind Group's Customer Success team. AnyTag is AnyMind Group's influencer marketing platform for discovering, activating, managing, tracking and attributing influencer marketing campaigns across YouTube, Instagram, TikTok and Twitter/X. Answer questions about AnyTag features, campaign workflows, influencer management, analytics and CS processes. Reply in the same language as the question. For workflow questions use numbered steps. If unsure say: I don't have full information on this, please check with the Product team or ask in #cs-product-questions. Knowledge base: anymind-group.gitbook.io/english-1`;
-let history=[],busy=false,apiKey=localStorage.getItem('anytag_key')||'';
-window.onload=()=>{if(apiKey){document.getElementById('api-key-input').value=apiKey;document.getElementById('key-ok').style.display='inline';}};
-function saveKey(){const v=document.getElementById('api-key-input').value.trim();if(!v)return;apiKey=v;localStorage.setItem('anytag_key',v);const ok=document.getElementById('key-ok');ok.style.display='inline';setTimeout(()=>ok.style.display='none',2000);}
-function resize(el){el.style.height='auto';el.style.height=Math.min(el.scrollHeight,120)+'px';}
-function onKey(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send();}}
-function useSug(el){document.getElementById('inp').value=el.textContent;document.getElementById('sugs-wrap').style.display='none';send();}
-function esc(t){return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
-function fmt(t){return esc(t).replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>').replace(/\n\n/g,'<br><br>').replace(/\n/g,'<br>');}
-function src(t){const s=[],l=t.toLowerCase();if(l.includes('campaign'))s.push('Campaign Guide');if(l.includes('influencer'))s.push('Influencer Management');if(l.includes('analytic')||l.includes('report'))s.push('Analytics Guide');if(l.includes('track'))s.push('Tracking Guide');if(!s.length)s.push('AnyTag Help · Gitbook');return s;}
-function addMsg(role,html,sources){
-  const chat=document.getElementById('chat'),w=document.createElement('div');
-  w.className='msg'+(role==='user'?' user':'');
-  const av=role==='user'?'CS':'AT',ac=role==='user'?'user':'bot',bc=role==='user'?'user':'bot';
-  let inner=`<div class="avatar ${ac}">${av}</div><div><div class="bubble ${bc}">${html}</div>`;
-  if(sources?.length)inner+=`<div class="sources">`+sources.map(s=>`<span class="src">${s}</span>`).join('')+`</div>`;
-  if(role==='bot'){const id='fb'+Date.now();inner+=`<div class="feedback"><button class="fb" onclic
+<script type="text/javascript">
+(function() {
+  var SYSTEM = "You are the AnyTag Knowledge Agent, an internal AI assistant for AnyMind Group's Customer Success team. AnyTag is AnyMind Group's influencer marketing platform for discovering, activating, managing, tracking and attributing influencer marketing campaigns across YouTube, Instagram, TikTok and Twitter/X. Answer questions about AnyTag features, campaign workflows, influencer management, analytics and CS processes. Reply in the same language as the question. For workflow questions use numbered steps. If unsure say: I don't have full information on this, please check with the Product team or #cs-product-questions. Knowledge base: anymind-group.gitbook.io/english-1";
+  var history = [], busy = false, apiKey = '';
+  try { apiKey = localStorage.getItem('anytag_key') || ''; } catch(e) {}
+  var keyInput = document.getElementById('api-key-input');
+  var saveBtn = document.getElementById('save-btn');
+  var keyOk = document.getElementById('key-ok');
+  var sendBtn = document.getElementById('send-btn');
+  var inp = document.getElementById('inp');
+  var chat = document.getElementById('chat');
+  var sugsWrap = document.getElementById('sugs-wrap');
+  if (apiKey) { keyInput.value = apiKey; keyOk.style.display = 'inline'; }
+  saveBtn.addEventListener('click', function() {
+    var v = keyInput.value.trim();
+    if (!v) return;
+    apiKey = v;
+    try { localStorage.setItem('anytag_key', v); } catch(e) {}
+    keyOk.style.display = 'inline';
+    setTimeout(function() { keyOk.style.display = 'none'; }, 2000);
+  });
+  inp.addEventListener('input', function() {
+    inp.style.height = 'auto';
+    inp.style.height = Math.min(inp.scrollHeight, 120) + 'px';
+  });
+  inp.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); doSend(); }
+  });
+  sendBtn.addEventListener('click', function() { doSend(); });
+  ['sug1','sug2','sug3','sug4'].forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) el.addEventListener('click', function() {
+      inp.value = el.textContent;
+      sugsWrap.style.display = 'none';
+      doSend();
+    });
+  });
+  function esc(t) { return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  function fmt(t) { return esc(t).replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>').replace(/\n\n/g,'<br><br>').replace(/\n/g,'<br>'); }
+  function getSrc(t) {
+    var s = [], l = t.toLowerCase();
+    if (l.indexOf('campaign') > -1) s.push('Campaign Guide');
+    if (l.indexOf('influencer') > -1) s.push('Influencer Management');
+    if (l.indexOf('analytic') > -1 || l.indexOf('report') > -1) s.push('Analytics Guide');
+    if (l.indexOf('track') > -1) s.push('Tracking Guide');
+    if (!s.length) s.push('AnyTag Help · Gitbook');
+    return s;
+  }
+  function addMsg(role, html, sources) {
+    var w = document.createElement('div');
+    w.className = 'msg' + (role === 'user' ? ' user' : '');
+    var av = role === 'user' ? 'CS' : 'AT';
+    var ac = role === 'user' ? 'user' : 'bot';
+    var bc = role === 'user' ? 'user' : 'bot';
+    var inner = '<div class="avatar ' + ac + '">' + av + '</div><div>';
+    inner += '<div class="bubble ' + bc + '">' + html + '</div>';
+    if (sources && sources.length) {
+      inner += '<div class="sources">' + sources.map(function(s) { return '<span class="src">' + s + '</span>'; }).join('') + '</div>';
+    }
+    if (role === 'bot') {
+      inner += '<div class="feedback"><button class="fb" data-type="up">+ Helpful</button><button class="fb" data-type="dn">- Inaccurate</button></div>';
+    }
+    inner += '</div>';
+    w.innerHTML = inner;
+    if (role === 'bot') {
+      var fbs = w.querySelectorAll('.fb');
+      fbs.forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          btn.className = 'fb ' + btn.getAttribute('data-type');
+          fbs.forEach(function(b) { if (b !== btn) b.className = 'fb'; });
+        });
+      });
+    }
+    chat.appendChild(w);
+    chat.scrollTop = chat.scrollHeight;
+  }
+  function doSend() {
+    if (busy) return;
+    var text = inp.value.trim();
+    if (!text) return;
+    if (!apiKey) { alert('Please enter your Anthropic API key first!'); keyInput.focus(); return; }
+    busy = true;
+    sendBtn.disabled = true;
+    sugsWrap.style.display = 'none';
+    inp.value = ''; inp.style.height = 'auto';
+    addMsg('user', esc(text));
+    history.push({ role: 'user', content: text });
+    var tw = document.createElement('div');
+    tw.className = 'msg';
+    tw.innerHTML = '<div class="avatar bot">AT</div><div class="typing-bub"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>';
+    chat.appendChild(tw);
+    chat.scrollTop = chat.scrollHeight;
+    fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-allow-browser': 'true' },
+      body: JSON.stringify({ model: 'claude-sonnet-4-5', max_tokens: 1000, system: SYSTEM, messages: history })
+    })
+    .then(function(res) { return res.json(); })
+    .then(function(data) {
+      tw.remove();
+      if (data.error) { addMsg('bot', 'Error: ' + esc(data.error.message)); }
+      else { var reply = data.content[0].text; history.push({ role: 'assistant', content: reply }); addMsg('bot', fmt(reply), getSrc(reply)); }
+    })
+    .catch(function() { tw.remove(); addMsg('bot', 'Connection error. Please check your API key and try again.'); })
+    .finally(function() { busy = false; sendBtn.disabled = false; inp.focus(); });
+  }
+})();
+</script>
+</body>
+</html>
